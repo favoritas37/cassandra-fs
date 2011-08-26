@@ -1,0 +1,43 @@
+/*This file contains an the CassandraFS Keyspace that can be set using the
+cassandra-cli command line interface as follows.
+
+bin/cassandra-cli -host localhost --file conf/cassandrafs-schema.txt
+
+The cassandra-cli includes online help that explains the statements below. You can
+accessed the help without connecting to a running cassandra instance by starting the
+client and typing "help;"
+*/
+
+create keyspace FS
+    with strategy_options=[{replication_factor:1}]
+    and placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy';
+
+use FS;
+
+create column family Files
+    with comparator = BytesType
+    and keys_cached = 10000
+    and rows_cached = 1000
+    and row_cache_save_period = 0
+    and key_cache_save_period = 3600
+    and memtable_flush_after = 59
+    and memtable_throughput = 128
+    and memtable_operations = 0.29
+	and min_compaction_threshold = 4
+    and max_compaction_threshold = 32
+	and gc_grace = 864000
+	and read_repair_chance = 1.0;
+
+create column family Folder
+    with column_type = Super
+    and comparator = UTF8Type
+    and subcomparator = UTF8Type
+	and gc_grace = 864000
+	and read_repair_chance = 1.0
+	and min_compaction_threshold = 4
+	and memtable_flush_after = 59
+    and memtable_throughput = 128
+    and memtable_operations = 0.29
+	and max_compaction_threshold = 32
+	and keys_cached = 10000
+	and key_cache_save_period = 3600;

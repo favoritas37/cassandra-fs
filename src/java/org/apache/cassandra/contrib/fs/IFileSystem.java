@@ -31,4 +31,5 @@ public interface IFileSystem {
 
 	public abstract boolean exist(String path) throws IOException;
 
+        public abstract int countDirChilden(String path) throws IOException;
 }
