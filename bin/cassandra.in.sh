@@ -14,16 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-cassandra_home=`dirname $0`/..
+if [ "x$CASSANDRA_HOME" = "x" ]; then
+    CASSANDRA_HOME=`dirname $0`/..
+fi
 
 # The directory where Cassandra's configs live (required)
-CASSANDRA_CONF=$cassandra_home/conf
+if [ "x$CASSANDRA_CONF" = "x" ]; then
+    CASSANDRA_CONF=$CASSANDRA_HOME/conf
+fi
 
 # This can be the path to a jar file, or a directory containing the 
 # compiled classes. NOTE: This isn't needed by the startup script,
 # it's just used here in constructing the classpath.
-cassandra_bin=$cassandra_home/build/classes
+cassandra_bin=$CASSANDRA_HOME/build/classes/main
+cassandra_bin=$cassandra_bin:$CASSANDRA_HOME/build/classes/thrift
 #cassandra_bin=$cassandra_home/build/cassandra.jar
 
 # JAVA_HOME can optionally be set here
@@ -32,23 +36,6 @@ cassandra_bin=$cassandra_home/build/classes
 # The java classpath (required)
 CLASSPATH=$CASSANDRA_CONF:$cassandra_bin
 
-for jar in $cassandra_home/lib/*.jar; do
+for jar in $CASSANDRA_HOME/lib/*.jar; do
     CLASSPATH=$CLASSPATH:$jar
 done
-
-# Arguments to pass to the JVM
-JVM_OPTS=" \
-        -ea \
-        -Xms128M \
-        -Xmx1G \
-        -XX:TargetSurvivorRatio=90 \
-        -XX:+AggressiveOpts \
-        -XX:+UseParNewGC \
-        -XX:+UseConcMarkSweepGC \
-        -XX:+CMSParallelRemarkEnabled \
-        -XX:+HeapDumpOnOutOfMemoryError \
-        -XX:SurvivorRatio=128 \
-        -XX:MaxTenuringThreshold=0 \
-        -Dcom.sun.management.jmxremote.port=8080 \
-        -Dcom.sun.management.jmxremote.ssl=false \
-        -Dcom.sun.management.jmxremote.authenticate=false"

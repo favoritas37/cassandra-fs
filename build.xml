@@ -1,168 +1,74 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!--
- ~ Licensed to the Apache Software Foundation (ASF) under one
- ~ or more contributor license agreements.  See the NOTICE file
- ~ distributed with this work for additional information
- ~ regarding copyright ownership.  The ASF licenses this file
- ~ to you under the Apache License, Version 2.0 (the
- ~ "License"); you may not use this file except in compliance
- ~ with the License.  You may obtain a copy of the License at
- ~
- ~    http://www.apache.org/licenses/LICENSE-2.0
- ~
- ~ Unless required by applicable law or agreed to in writing,
- ~ software distributed under the License is distributed on an
- ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- ~ KIND, either express or implied.  See the License for the
- ~ specific language governing permissions and limitations
- ~ under the License.
- -->
-<project basedir="." default="compile" name="apache-cassandra-fs">
-	<property environment="env" />
-	<property file="build.properties" />
-	<property name="debuglevel" value="source,lines,vars" />
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See commented blocks below for -->
+<!-- some examples of how to customize the build. -->
+<!-- (If you delete it and reopen the project it will be recreated.) -->
+<!-- By default, only the Clean and Build commands use this build script. -->
+<!-- Commands such as Run, Debug, and Test only use this build script if -->
+<!-- the Compile on Save feature is turned off for the project. -->
+<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
+<!-- in the project's Project Properties dialog box.-->
+<project name="CassandraFsClient" default="default" basedir=".">
+    <description>Builds, tests, and runs the project CassandraFsClient.</description>
+    <import file="nbproject/build-impl.xml"/>
+    <!--
 
-	<property name="basedir" value="." />
-	<property name="build.src" value="${basedir}/src/java" />
-	<property name="build.lib" value="${basedir}/lib" />
-	<property name="build.test.src" value="${basedir}/test/src" />
-	<property name="build.classes" value="build/classes" />
-	<property name="build.test.classes" value="build/test/classes" />
-	<property name="javadoc.dir" value="build/javadoc" />
-	<property name="test.dir" value="${basedir}/test" />
-	<property name="test.resources" value="${test.dir}/resources" />
-	<property name="test.conf" value="${test.dir}/conf" />
-	<property name="test.name" value="Test*" />
-	<property name="dist.dir" value="build/dist" />
-	<property name="version" value="0.6.0" />
-	<property name="final.name" value="${ant.project.name}-${version}" />
+    There exist several targets which are by default empty and which can be 
+    used for execution of your tasks. These targets are usually executed 
+    before and after some main targets. They are: 
+
+      -pre-init:                 called before initialization of project properties
+      -post-init:                called after initialization of project properties
+      -pre-compile:              called before javac compilation
+      -post-compile:             called after javac compilation
+      -pre-compile-single:       called before javac compilation of single file
+      -post-compile-single:      called after javac compilation of single file
+      -pre-compile-test:         called before javac compilation of JUnit tests
+      -post-compile-test:        called after javac compilation of JUnit tests
+      -pre-compile-test-single:  called before javac compilation of single JUnit test
+      -post-compile-test-single: called after javac compilation of single JUunit test
+      -pre-jar:                  called before JAR building
+      -post-jar:                 called after JAR building
+      -post-clean:               called after cleaning build products
+
+    (Targets beginning with '-' are not intended to be called on their own.)
+
+    Example of inserting an obfuscator after compilation could look like this:
+
+        <target name="-post-compile">
+            <obfuscate>
+                <fileset dir="${build.classes.dir}"/>
+            </obfuscate>
+        </target>
+
+    For list of available properties check the imported 
+    nbproject/build-impl.xml file. 
 
 
-	<!-- 
-	 Add all the dependencies.
+    Another way to customize the build is by overriding existing main targets.
+    The targets of interest are: 
+
+      -init-macrodef-javac:     defines macro for javac compilation
+      -init-macrodef-junit:     defines macro for junit execution
+      -init-macrodef-debug:     defines macro for class debugging
+      -init-macrodef-java:      defines macro for class execution
+      -do-jar-with-manifest:    JAR building (if you are using a manifest)
+      -do-jar-without-manifest: JAR building (if you are not using a manifest)
+      run:                      execution of project 
+      -javadoc-build:           Javadoc generation
+      test-report:              JUnit report generation
+
+    An example of overriding the target for project execution could look like this:
+
+        <target name="run" depends="CassandraFsClient-impl.jar">
+            <exec dir="bin" executable="launcher.exe">
+                <arg file="${dist.jar}"/>
+            </exec>
+        </target>
+
+    Notice that the overridden target depends on the jar target and not only on 
+    the compile target as the regular run target does. Again, for a list of available 
+    properties which you can use, check the target you are overriding in the
+    nbproject/build-impl.xml file. 
+
     -->
-	<path id="cassandra_fs.classpath">
-		<pathelement location="${build.classes}" />
-		<fileset dir="${build.lib}">
-			<include name="**/*.jar" />
-		</fileset>
-	</path>
-
-	<!--
-	Setup the output directories.
-    -->
-	<target name="init" depends="clean">
-		<mkdir dir="${build.classes}" />
-		<mkdir dir="${build.test.classes}" />
-	</target>
-
-	<target name="clean">
-		<delete dir="build/classes" />
-		<delete dir="build/test" />
-	</target>
-
-	<target name="compile" depends="init">
-		<javac debug="true" debuglevel="${debuglevel}" destdir="${build.classes}">
-			<src path="${build.src}" />
-			<classpath refid="cassandra_fs.classpath" />
-		</javac>
-	</target>
-
-	<target name="compile-test" depends="compile">
-		<javac debug="true" debuglevel="${debuglevel}" destdir="${build.test.classes}">
-			<src path="${build.test.src}" />
-			<classpath refid="cassandra_fs.classpath" />
-		</javac>
-	</target>
-
-	<!--
-	The jar target makes cassandra.jar output.
-    -->
-	<target name="jar" depends="compile">
-		<mkdir dir="${build.classes}/META-INF" />
-		<jar jarfile="build/${final.name}.jar" basedir="${build.classes}">
-			<manifest>
-				<!-- <section name="org/apache/cassandra/infrastructure"> -->
-				<attribute name="Implementation-Title" value="Cassandra" />
-				<attribute name="Implementation-Version" value="${version}" />
-				<attribute name="Implementation-Vendor" value="Apache" />
-				<attribute name="Premain-Class" value="org.apache.cassandra.infrastructure.continuations.CAgent" />
-				<!-- </section> -->
-			</manifest>
-		</jar>
-	</target>
-
-
-	<target name="test" depends="compile-test">
-		<echo message="running tests" />
-		<mkdir dir="build/test/cassandra" />
-		<mkdir dir="build/test/output" />
-		<junit fork="on" failureproperty="testfailed">
-			<formatter type="xml" usefile="true" />
-			<formatter type="brief" usefile="false" />
-			<jvmarg value="-Dstorage-config=${test.conf}" />
-			<jvmarg value="-ea" />
-			<jvmarg value="-Xmx1024m" />
-			<classpath>
-				<path refid="cassandra_fs.classpath" />
-				<pathelement location="${build.test.classes}" />
-				<pathelement location="${test.conf}" />
-			</classpath>
-			<batchtest todir="build/test/output">
-				<fileset dir="${build.test.classes}" includes="**/${test.name}.class" />
-			</batchtest>
-		</junit>
-
-		<fail if="testfailed" message="Some test(s) failed." />
-	</target>
-
-	<target name="javadoc" depends="init">
-		<tstamp>
-			<format property="YEAR" pattern="yyyy" />
-		</tstamp>
-		<javadoc destdir="${javadoc.dir}" author="true" version="true" use="true" windowtitle="${ant.project.name} API" classpathref="cassandra.classpath" bottom="Copyright &amp;copy; ${YEAR} The Apache Software Foundation">
-			<fileset dir="${build.src}" defaultexcludes="yes">
-				<include name="org/apache/**/*.java" />
-			</fileset>
-		</javadoc>
-	</target>
-
-	<!-- The cassandra fs web site -->
-	<path id="tomcat.classpath">
-		<fileset dir="${env.TOMCAT_HOME}/lib">
-			<include name="**/*.jar" />
-		</fileset>
-		<fileset dir="${env.TOMCAT_HOME}/bin">
-			<include name="**/*.jar" />
-		</fileset>
-	</path>
-	<property name="cfs_web_dir" value="${basedir}/contrib/cassandra_fs_web"/>
-	<property name="WebXms" value="512m"/>
-	<property name="WebXmx" value="1024m"/>
-	<property name="site.port" value="18080"/>
-	<property name="debug.site.port" value="10080"/>
-		
-	<target name="web">
-		<fail unless="env.TOMCAT_HOME" message="!!!Fail: not define TOMCAT_HOME"/>
-		<!-- Start Tomcat Java Process -->
-		<echo>Port - ${site.port} / debug port - ${debug.site.port}</echo>
-		<echo>Root - ${cfs_web_dir}/ROOT</echo>
-		<echo>Cassandra configuration folder - ${basedir}/conf</echo>
-		<echo>Run tomcat in - ${env.TOMCAT_HOME}</echo>
-
-		<java classname="org.apache.catalina.startup.Bootstrap" fork="true" maxmemory="${WebXmx}" dir="${cfs_web_dir}/ROOT" spawn="false">
-			<classpath refid="tomcat.classpath" />
-			<classpath refid="cassandra_fs.classpath" />
-			<jvmarg value="-Dcatalina.home=${env.TOMCAT_HOME}" />
-			<jvmarg value="-Dcatalina.base=${cfs_web_dir}" />
-			<jvmarg value="-Dstorage-config=${basedir}/conf" />
-			<jvmarg value="-Xms${WebXms}" />
-			<jvmarg value="-Xmx${WebXmx}" />
-			<sysproperty key="port" value="${site.port}" />
-			<jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=${debug.site.port}" />
-			<jvmarg value="-Xdebug" />
-			<arg line="start" />
-		</java>
-	</target>
-	
 </project>
