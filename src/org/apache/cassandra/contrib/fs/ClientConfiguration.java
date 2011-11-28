@@ -18,8 +18,8 @@ public class ClientConfiguration
     private int defaultMaxIdle = 10;
     private int defaultMaxWaitTimeWhenExhausted = 60 * 1000;
     private int defaultCassandraThriftSocketTimeout = 60 * 1000;
-    private String consistencyRead = "QUORUM";
-    private String consistencyWrite = "QUORUM";
+//    private String consistencyRead = "QUORUM";
+//    private String consistencyWrite = "QUORUM";
 
     public ClientConfiguration(String propertyFile) throws IOException
     {

@@ -314,7 +314,7 @@ public class FSCliMain {
             }
 
             for (int i = 1; i < tokens.length; ++i) {
-                fs.createFile(decoratePath(tokens[i]), "".getBytes());
+                fs.touchFile(decoratePath(tokens[i]));
             }
         }
     }

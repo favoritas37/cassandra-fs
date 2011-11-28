@@ -325,9 +325,6 @@ public class CassandraFileSystem implements IFileSystem {
         FileOutputStream os = null;
         try {
             os = new FileOutputStream(localDestFile);
-
-            
-
             os.close();
         } catch (IOException ex) {
             LOGGER.debug(ex);
@@ -339,6 +336,14 @@ public class CassandraFileSystem implements IFileSystem {
             }
         }
     }
+    
+    public void touchFile(String path) throws IOException
+    {
+        if(existFile(path))
+            facade.put(path, FSConstants.FileCF + ":" + FSConstants.LastModifyTime, Bytes.toBytes(format.format(new Date())));
+        else
+            createFile(path, "".getBytes());
+    }
 
     public static void main(String[] args) throws IOException,
             TTransportException {
@@ -346,8 +351,9 @@ public class CassandraFileSystem implements IFileSystem {
         IFileSystem fs = CassandraFileSystem.getInstance();
         //List<Path> children = fs.list("/data");
         //List<Path> files = new ArrayList<Path>();
-        fs.createFile("/usr/ftylitak/test2.cpp", Bytes.toBytes("this is a freaking test of a new file"));
-        fs.readFile("/usr/ftylitak/test2.cpp");
+        //fs.createFile("/usr/ftylitak/test2.cpp", Bytes.toBytes("this is a freaking test of a new file"));
+        //fs.readFile("/usr/ftylitak/test2.cpp");
+        fs.touchFile("/usr/ftylitak/test.cpp");
 
         // fs.mkdir("/data");
         // System.out.println(fs.exist("/data"));
