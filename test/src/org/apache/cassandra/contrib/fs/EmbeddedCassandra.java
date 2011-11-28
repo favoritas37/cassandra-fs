@@ -13,9 +13,9 @@ public class EmbeddedCassandra extends Thread {
 		daemon = new CassandraDaemon();
 		try {
 			daemon.init(null);
-		} catch (TTransportException e) {
+		}/* catch (TTransportException e) {
 			e.printStackTrace();
-		} catch (IOException e) {
+		}*/ catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

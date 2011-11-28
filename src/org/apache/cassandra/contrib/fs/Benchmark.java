@@ -88,11 +88,11 @@ public class Benchmark {
     public void start() throws IOException, TTransportException {
        cli.connect();
 
-     /*   System.out.println("Connecting to server: " + synchServerIP + ":" + synchServerPort);
+        System.out.println("Connecting to server: " + synchServerIP + ":" + synchServerPort);
         Socket clientSocket = new Socket(synchServerIP, synchServerPort);
-        */
-        //PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
-        //BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        
+        PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
          
         char[] cbuf = new char[5];
 
@@ -108,9 +108,10 @@ public class Benchmark {
         while(true)
         {
             LOGGER.debug("Receiving command from server");
-            //inFromServer.read(cbuf);
+            inFromServer.read(cbuf);
             LOGGER.debug("Receiving command succeded");
-            String command = commandsStr[i++];//new String(cbuf);
+            //String command = commandsStr[i++];//new String(cbuf);
+            String command = new String(cbuf);
 
             if(command.compareTo("exit_") == 0)
                 break;
@@ -137,12 +138,12 @@ public class Benchmark {
             }
 
             LOGGER.debug("Sending ACK: "  + command);
-           // outToServer.println(command);
+            outToServer.println(command);
             LOGGER.debug("Sending succeded");
         }
 
-       // outToServer.close();
-       // inFromServer.close();
+        outToServer.close();
+        inFromServer.close();
     }
 
     /**
@@ -252,7 +253,7 @@ public class Benchmark {
         for (int i = 0; i < numOfOperations; i++) {
             int index = RandomGenerator.rand(0, 23);
 
-            char file = ((char) ((int) 'a' + RandomGenerator.rand(0, 23)));
+            char file = ((char) ((int) 'a' + index));
             String filePath = fileToFolder.get("" + file) + "/"  + file;
             filesUsed.add(filePath);
             LOGGER.debug("Remote path selected to place file: " + filePath);

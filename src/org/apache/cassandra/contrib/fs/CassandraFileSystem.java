@@ -66,13 +66,13 @@ public class CassandraFileSystem implements IFileSystem {
             int to = ((i + 1) * FSConstants.BlockSize > content.length) ? content.length
                     : (i + 1) * FSConstants.BlockSize;
             if (i == 0) {
-                firstRowMap.put(FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr, Arrays.copyOfRange(content,
+                firstRowMap.put(/*FSConstants.FileCF + ":"
+                        + */FSConstants.ContentAttr, Arrays.copyOfRange(content,
                         from, to));
             } else {
                 Map<String, byte[]> chunkRow = new HashMap<String, byte[]>();
-                chunkRow.put(FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr, Arrays.copyOfRange(content,
+                chunkRow.put(/*FSConstants.FileCF + ":"
+                        +*/ FSConstants.ContentAttr, Arrays.copyOfRange(content,
                         from, to));
                 fileMap.put(path + "_$" + i, chunkRow);
             }
@@ -158,10 +158,7 @@ public class CassandraFileSystem implements IFileSystem {
         LOGGER.debug("Putting META data to the queue to be inserted.");
 
         LOGGER.debug("Byte length: " + length + ", " + Bytes.toBytes(length));
-
         
-        
-        //batchPutMultipleSimpleKeyColumns
         if(ensureAtomicity)
             map.clear();
 
@@ -351,8 +348,10 @@ public class CassandraFileSystem implements IFileSystem {
             TTransportException {
         System.setProperty("storage-config", "conf");
         IFileSystem fs = CassandraFileSystem.getInstance();
-        List<Path> children = fs.list("/data");
-        List<Path> files = new ArrayList<Path>();
+        //List<Path> children = fs.list("/data");
+        //List<Path> files = new ArrayList<Path>();
+        fs.createFile("/usr/ftylitak/test2.cpp", Bytes.toBytes("this is a freaking test of a new file"));
+        fs.readFile("/usr/ftylitak/test2.cpp");
 
         // fs.mkdir("/data");
         // System.out.println(fs.exist("/data"));

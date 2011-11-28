@@ -141,8 +141,8 @@ reduce_cache_capacity_to: 0.6
 # On the other hand, since writes are almost never IO bound, the ideal
 # number of "concurrent_writes" is dependent on the number of cores in
 # your system; (8 * number_of_cores) is a good rule of thumb.
-concurrent_reads: 32
-concurrent_writes: 32
+concurrent_reads: 16
+concurrent_writes: 16
 
 # # Total memory to use for memtables.  Cassandra will flush the largest
 # memtable when this much memory is used.

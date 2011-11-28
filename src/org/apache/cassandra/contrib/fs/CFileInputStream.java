@@ -22,7 +22,6 @@ public class CFileInputStream extends InputStream {
     private int numOfChunks;
     private LinkedList<byte[]> bufferList;
     private final Semaphore sem = new Semaphore(FSConstants.MaxFileSize / FSConstants.BlockSize, true);
- //   private final Semaphore accessSem = new Semaphore(1, true);
     private boolean buffering;
 
     public CFileInputStream(String path, CassandraFacade facade)
@@ -36,14 +35,16 @@ public class CFileInputStream extends InputStream {
 
         LOGGER.debug("Length: " + length);
 
-        this.curBlockStream = new ByteArrayInputStream(bytes);
+        if(bytes == null)
+            this.curBlockStream = new ByteArrayInputStream(new byte[0]);
+        else
+            this.curBlockStream = new ByteArrayInputStream(bytes);
         this.blockIndex++;
         numOfChunks = length/FSConstants.BlockSize;
         buffering = false;
         bufferList = new LinkedList();
-
+        
         //initialize semaphore to be available
-        //accessSem.release();
         sem.drainPermits();
         new BufferThread().start();
    }
@@ -57,19 +58,12 @@ public class CFileInputStream extends InputStream {
         } else {
             try
             {
-//                LOGGER.debug("Acquiring access");
-//                accessSem.acquire();
-//                LOGGER.debug("Access granded");
                 if(!buffering && bufferList.size() == 0)
                     return -1;
-            
-            
-   //             accessSem.release();
                 
                 LOGGER.debug("Acquiring semaphore");
                 sem.acquire();
                 LOGGER.debug("Acquiring succeded");
-                
                 
                 byte[] bytes = (byte[]) bufferList.poll();
                 if(bytes == null)
@@ -116,7 +110,6 @@ public class CFileInputStream extends InputStream {
                         blockId++;
                         break;
                     }
-        //            accessSem.release();
                     LOGGER.debug("Buffering chunk: " + path + "_$" + blockId);
                     byte[] bytes = facade.get(path + "_$" + blockId, FSConstants.FileCF + ":" + FSConstants.ContentAttr);
                     LOGGER.debug("Buffering chunk: " + path + "_$" + blockId++ + "...completed.");
@@ -126,8 +119,6 @@ public class CFileInputStream extends InputStream {
                     LOGGER.debug("Releasing semaphore");
                     sem.release();
                     LOGGER.debug("Releasing completed ");
-
-                    //accessSem.acquire();
                 }
             } /*catch (InterruptedException ex) {
                 LOGGER.debug(ex);
@@ -135,7 +126,6 @@ public class CFileInputStream extends InputStream {
                 LOGGER.debug(ex);
             }
             buffering = false;
-//            accessSem.release();
 
             if(sem.availablePermits() == 0 && sem.hasQueuedThreads())
                 sem.release();
@@ -177,7 +167,6 @@ public class CFileInputStream extends InputStream {
                     {
                         LOGGER.debug("failed");
                     }
-
                     tmpIndex++;
                 }
             } catch (IOException ex) {

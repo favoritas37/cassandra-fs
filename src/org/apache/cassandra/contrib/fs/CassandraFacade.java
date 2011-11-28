@@ -160,7 +160,7 @@ public class CassandraFacade
     }
 
     /**
-     * Delete all columns refering to that row
+     * Delete all columns referring to that row
      * @param key
      * @throws IOException
      */
