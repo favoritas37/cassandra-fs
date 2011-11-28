@@ -66,13 +66,11 @@ public class CassandraFileSystem implements IFileSystem {
             int to = ((i + 1) * FSConstants.BlockSize > content.length) ? content.length
                     : (i + 1) * FSConstants.BlockSize;
             if (i == 0) {
-                firstRowMap.put(/*FSConstants.FileCF + ":"
-                        + */FSConstants.ContentAttr, Arrays.copyOfRange(content,
+                firstRowMap.put(FSConstants.ContentAttr, Arrays.copyOfRange(content,
                         from, to));
             } else {
                 Map<String, byte[]> chunkRow = new HashMap<String, byte[]>();
-                chunkRow.put(/*FSConstants.FileCF + ":"
-                        +*/ FSConstants.ContentAttr, Arrays.copyOfRange(content,
+                chunkRow.put(FSConstants.ContentAttr, Arrays.copyOfRange(content,
                         from, to));
                 fileMap.put(path + "_$" + i, chunkRow);
             }
@@ -132,17 +130,15 @@ public class CassandraFileSystem implements IFileSystem {
             
             length += num;
             if (index == 0) {
-                LOGGER.debug("Putting path: " + path + ", column: " + FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr );//+ ", content: " + new String(content));
+                LOGGER.debug("Putting path: " + path + ", column: " + FSConstants.ContentAttr );//+ ", content: " + new String(content));
                 if(ensureAtomicity)
                     map.put(FSConstants.ContentAttr, content);
                 else
-                    facade.put(path, FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr, content);
+                    facade.put(path, /*FSConstants.FileCF + ":"
+                        +*/ FSConstants.ContentAttr, content);
             } else {
                 
-                LOGGER.debug("Putting path: " + path + "_$" + index + ", column: " + FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr);
+                LOGGER.debug("Putting path: " + path + "_$" + index + ", column: " + FSConstants.ContentAttr);
                 if(ensureAtomicity)
                 {
                     Map<String, byte[]> chunkRow = new HashMap<String, byte[]>();
@@ -150,8 +146,8 @@ public class CassandraFileSystem implements IFileSystem {
                     keyMap.put(path + "_$" + index, chunkRow);
                 }
                 else
-                    facade.put(path + "_$" + index, FSConstants.FileCF + ":"
-                        + FSConstants.ContentAttr, content);
+                    facade.put(path + "_$" + index, /*FSConstants.FileCF + ":"
+                        +*/ FSConstants.ContentAttr, content);
             }
             index++;
         }
