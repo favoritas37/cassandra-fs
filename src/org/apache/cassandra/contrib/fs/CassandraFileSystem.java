@@ -1,6 +1,5 @@
 package org.apache.cassandra.contrib.fs;
 
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,7 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
+import java.util.UUID;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 
 import org.apache.cassandra.contrib.fs.util.Bytes;

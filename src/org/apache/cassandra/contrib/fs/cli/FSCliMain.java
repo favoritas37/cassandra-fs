@@ -509,7 +509,10 @@ public class FSCliMain {
         } else if (path.startsWith("/")) {
             return path;
         } else {
-            return curWorkingDir + "/" + path;
+            if(curWorkingDir.equals("/"))
+                return curWorkingDir + path;
+            else
+                return curWorkingDir + "/" + path;
         }
     }
 
@@ -519,7 +522,12 @@ public class FSCliMain {
 
         FSCliMain cli = new FSCliMain();
         cli.run();
-        //  cli.connect();
+        
+       //   cli.connect();
+       //   cli.processMkDir(cli.parseCommand("mkdir dummy"));
+//          cli.processRM(cli.parseCommand("rm gina"));
+//          cli.processCD(cli.parseCommand("cd /"));
+//          cli.processCD(cli.parseCommand("cd usr"));
 
         //  cli.processCopyToLocal(cli.parseCommand("copyToLocal /usr/svn.rar D:\\cleanup2.exe"));
 

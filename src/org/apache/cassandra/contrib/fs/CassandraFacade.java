@@ -220,6 +220,7 @@ public class CassandraFacade
                     String name = new String(sc.getNameBytes());
                     List<HColumn<String, String>> attributes = sc.getColumns();
                     Path path = new Path(attributes, name);
+//                    children.add(path);
                     if (includeFolderFlag) {
                         children.add(path);
                     } else if (!name.equals(FSConstants.FolderFlag)) {

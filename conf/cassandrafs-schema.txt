@@ -16,21 +16,20 @@ use FS;
 
 create column family Files
     with comparator = BytesType
-	and read_repair_chance = 0.1
+and read_repair_chance = 0.1
     and memtable_throughput = 128
     and memtable_operations = 0.29
-	and min_compaction_threshold = 4
+and min_compaction_threshold = 4
     and max_compaction_threshold = 32
-	and replicate_on_write = true
-	and gc_grace = 864000;
+and replicate_on_write = true
+and gc_grace = 864000;
 
 create column family Folder
     with column_type = Super
     and comparator = UTF8Type
     and subcomparator = UTF8Type
-	and read_repair_chance = 0.1
-	and gc_grace = 864000
-	and min_compaction_threshold = 4
-	and max_compaction_threshold = 32
-	and replicate_on_write = true;
-	
+and read_repair_chance = 0.1
+and gc_grace = 864000
+and min_compaction_threshold = 4
+and max_compaction_threshold = 32
+and replicate_on_write = true;
