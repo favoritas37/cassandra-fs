@@ -1,10 +1,10 @@
-/*This file contains an the CassandraFS Keyspace that can be set using the
+/*This file contains the CassandraFS Keyspace that can be set using the
 cassandra-cli command line interface as follows.
 
-bin/cassandra-cli -host localhost --file conf/cassandrafs-schema.txt
+bin\cassandra-cli -host localhost --file conf\cassandrafs-schema.txt
 
 The cassandra-cli includes online help that explains the statements below. You can
-accessed the help without connecting to a running cassandra instance by starting the
+access the help without connecting to a running cassandra instance by starting the
 client and typing "help;"
 */
 
@@ -14,22 +14,44 @@ create keyspace FS
 
 use FS;
 
-create column family Files
-    with comparator = BytesType
-and read_repair_chance = 0.1
-    and memtable_throughput = 128
-    and memtable_operations = 0.29
-and min_compaction_threshold = 4
-    and max_compaction_threshold = 32
-and replicate_on_write = true
-and gc_grace = 864000;
-
-create column family Folder
-    with column_type = Super
-    and comparator = UTF8Type
-    and subcomparator = UTF8Type
-and read_repair_chance = 0.1
-and gc_grace = 864000
-and min_compaction_threshold = 4
-and max_compaction_threshold = 32
-and replicate_on_write = true;
+create column family FileMeta
+    with comparator = AsciiType
+	and key_validation_class = AsciiType
+	and read_repair_chance = 0.1
+	and replicate_on_write = true
+	and compression_options = [{sstable_compression:SnappyCompressor, chunk_length_kb:64}]
+	and column_metadata = [{column_name: Name, validation_class: UTF8Type, index_type: KEYS},
+	{column_name: Path, validation_class: UTF8Type, index_type: KEYS},
+	{column_name: Type, validation_class: UTF8Type, index_type: KEYS},
+	{column_name: Length, validation_class: LongType, index_type: KEYS},
+	{column_name: CreationTime, validation_class: DateType, index_type: KEYS},
+	{column_name: LastModifyTime, validation_class: DateType, index_type: KEYS},
+	{column_name: Owner, validation_class: UTF8Type, index_type: KEYS},
+	{column_name: Group, validation_class: UTF8Type, index_type: KEYS},
+	{column_name: Permissions, validation_class: BytesType}];
+	
+create column family FileData
+    with comparator = AsciiType
+	and key_validation_class = AsciiType
+	and read_repair_chance = 0.1
+	and replicate_on_write = true
+	and compression_options = [{sstable_compression:SnappyCompressor, chunk_length_kb:64}]
+	and column_metadata = [{column_name: Chunk, validation_class: BytesType}];
+	
+/*
+	The chunks will be stored in one column. So the convention with the multiple rows and _$x will be kept. This will happen to make use of 
+	the benefits of the compression. Thus we keep only one column.
+	
+	*------- OLDE ------*
+	File chunks will be stored in the same row but in different columns. Since compation nowadays doesn't loads the entire row in memory
+	we are free to load it as much as needed. Hipothetically having the restriction that a column value can't be more than 2GB and the 
+	maximum number of columns per row is 2 billion...means we have plenty of room to store a single file.
+	*-------------------*
+	
+	Each row key exists in FileMeta will exist in FileData with all the appropriate columns.
+	
+	Also it is stored in a different column family because FileMeta CF has all the default columns making it more robust for the use of
+	the sstable compression.
+	
+	Future ---- a new column family can be added to hold all the relations.
+*/

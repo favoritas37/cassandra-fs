@@ -23,8 +23,6 @@ public interface IFileSystem {
 
 	public abstract List<Path> list(String path) throws IOException;
 
-	public abstract List<Path> listAll(String path) throws IOException;
-
 	public abstract boolean existDir(String path) throws IOException;
 
 	public abstract boolean existFile(String path) throws IOException;

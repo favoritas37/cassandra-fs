@@ -6,17 +6,22 @@ public class FSConstants {
 
 	// schema config
 	public final static String KeySpace = "FS";
-	public final static String FolderCF = "Folder";
-	public final static String FileCF = "Files";
-	public final static String FolderFlag = "$_Folder_$";
+	public final static String FileMetaCF = "FileMeta";
+        public final static String FileDataCF = "FileData";
+	//public final static String FolderFlag = "$_Folder_$";
 
 	// attribute
+        public final static String NameAttr = "Name";
+        public final static String PathAttr = "Path";
 	public final static String TypeAttr = "Type"; // file or folder
-	public final static String ContentAttr = "Content";
 	public final static String LengthAttr = "Length";
-	public final static String LastModifyTime = "LastModifyTime";
+        public final static String CreationTimeAttr = "CreationTime";
+	public final static String LastModifiedTime = "LastModifiedTime";
 	public final static String OwnerAttr = "Owner";
 	public final static String GroupAttr = "Group";
+        public final static String PermissionsAttr = "Permissions";
+        
+        public final static String ChunkAttr = "Chunk";
 
 	// default owner and group
 
@@ -24,8 +29,7 @@ public class FSConstants {
 	public final static byte[] DefaultGroup = Bytes.toBytes("supergroup");
 
 	// size limitation
-	public static int MaxFileSize = 524288000; // (?) can go up to 2GB
-	public static int BlockSize = 5242880;//5 * 1024 * 1024;
+	public static int BlockSize = 15204352;//MAX able 14,5 MB/chunk
 
 	// client property
 	public final static String Hosts = "cassandra.client.hosts";

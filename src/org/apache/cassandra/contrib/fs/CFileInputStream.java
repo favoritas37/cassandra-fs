@@ -15,33 +15,32 @@ public class CFileInputStream extends InputStream {
 
     private static Logger LOGGER = Logger.getLogger(CFileInputStream.class);
     private InputStream curBlockStream;
-    private int blockIndex = 0;
     private String path;
     private CassandraFacade facade;
-    private int length;
+    private long length;
     private int numOfChunks;
+    private int numOfChunksAcquired = 0;
     private LinkedList<byte[]> bufferList;
-    private final Semaphore sem = new Semaphore(FSConstants.MaxFileSize / FSConstants.BlockSize, true);
+    private Semaphore sem;
     private boolean buffering;
+    private String uuid = "";
 
     public CFileInputStream(String path, CassandraFacade facade)
             throws IOException {
         this.path = path;
         this.facade = facade;
-        byte[] bytes = facade.get(path, FSConstants.FileCF + ":"
-                + FSConstants.ContentAttr);
-        length = Bytes.toInt(facade.get(path, FSConstants.FileCF + ":"
-                + FSConstants.LengthAttr));
-
+        uuid = facade.getRowUUID(path);
+        
+        length = Bytes.toLong(facade.get(FSConstants.FileMetaCF, uuid, FSConstants.LengthAttr));
         LOGGER.debug("Length: " + length);
-
-        if(bytes == null)
-            this.curBlockStream = new ByteArrayInputStream(new byte[0]);
-        else
-            this.curBlockStream = new ByteArrayInputStream(bytes);
-        this.blockIndex++;
-        numOfChunks = length/FSConstants.BlockSize;
-        buffering = false;
+        
+        //Add an extra semaphore since we removed the reading of the first chunk from this
+        //constructor
+        numOfChunks = (int)(length/(long)FSConstants.BlockSize) + (length%FSConstants.BlockSize == 0 ? 0 : 1);
+        LOGGER.debug("Number of chunks: " + numOfChunks);
+        sem = new Semaphore(numOfChunks, true);
+        this.curBlockStream = new ByteArrayInputStream(new byte[0]);
+        buffering = true;
         bufferList = new LinkedList();
         
         //initialize semaphore to be available
@@ -58,27 +57,28 @@ public class CFileInputStream extends InputStream {
         } else {
             try
             {
-                if(!buffering && bufferList.size() == 0)
+                if((!buffering && bufferList.size() == 0) || numOfChunksAcquired == numOfChunks)
                     return -1;
-                
+
                 LOGGER.debug("Acquiring semaphore");
                 sem.acquire();
                 LOGGER.debug("Acquiring succeded");
-                
+
                 byte[] bytes = (byte[]) bufferList.poll();
                 if(bytes == null)
                 {
-                    LOGGER.debug("Error: writing buffered chunks.");
-                    LOGGER.debug("Error: NULL returned from buffering file: " + path);
+                    LOGGER.debug("Buffering file: " + path  + " reached <EOF>");
                     return -1;
                 }
-
+                numOfChunksAcquired++;
                 curBlockStream = new ByteArrayInputStream(bytes);
+                LOGGER.debug("ByteArrayInputStream length: " + bytes.length);
                 return curBlockStream.read();
             } catch (InterruptedException ex) {
                 LOGGER.debug(ex);
             } catch (IOException e) {
                 if (e.getCause() instanceof NotFoundException) {
+                    LOGGER.debug("NotFoundException");
                     return -1;
                 } else {
                     throw e;
@@ -96,7 +96,7 @@ public class CFileInputStream extends InputStream {
 
         BufferThread()
         {
-            blockId = 1;
+            blockId = 0;
         }
 
         @Override
@@ -104,15 +104,15 @@ public class CFileInputStream extends InputStream {
         {
             buffering = true;
             try {
-                while (facade.exist(path + "_$" + blockId)) {
-                    if (blockId > numOfChunks) {
-                        new CleanerThread(path, blockId).start();
+                while (facade.exist(uuid + "_$" + blockId, FSConstants.FileDataCF)) {
+                    if (blockId >= numOfChunks) {
+                        new CleanerThread(blockId).start();
                         blockId++;
                         break;
                     }
-                    LOGGER.debug("Buffering chunk: " + path + "_$" + blockId);
-                    byte[] bytes = facade.get(path + "_$" + blockId, FSConstants.FileCF + ":" + FSConstants.ContentAttr);
-                    LOGGER.debug("Buffering chunk: " + path + "_$" + blockId++ + "...completed.");
+                    LOGGER.debug("Buffering chunk: " + uuid + "_$" + blockId);
+                    byte[] bytes = facade.get(FSConstants.FileDataCF, uuid + "_$" + blockId, FSConstants.ChunkAttr);
+                    LOGGER.debug("Buffering chunk: " + uuid + "_$" + blockId++ + "...completed.");
 
                     bufferList.offer(bytes);
                     
@@ -120,9 +120,7 @@ public class CFileInputStream extends InputStream {
                     sem.release();
                     LOGGER.debug("Releasing completed ");
                 }
-            } /*catch (InterruptedException ex) {
-                LOGGER.debug(ex);
-            }*/ catch (IOException ex) {
+            }  catch (IOException ex) {
                 LOGGER.debug(ex);
             }
             buffering = false;
@@ -134,12 +132,10 @@ public class CFileInputStream extends InputStream {
 
     class CleanerThread extends Thread
     {
-        private String path;
         private int index;
 
-        CleanerThread(String path, int index)
+        CleanerThread(int index)
         {
-            this.path = path;
             this.index = index;
         }
 
@@ -148,19 +144,19 @@ public class CFileInputStream extends InputStream {
         {
             int tmpIndex = index;
             try {
-                LOGGER.debug("Started cleaning unused chunks of file: " + path);
+                LOGGER.debug("Started cleaning unused chunks of file: " + uuid);
                 while(true)
                 {
-                    String chunkName = path + "_$" + tmpIndex;
-                    if(!facade.exist(chunkName))
+                    String chunkName = uuid + "_$" + tmpIndex;
+                    if(!facade.exist(chunkName, FSConstants.FileDataCF))
                     {
-                        LOGGER.debug("Clean completed: " + path);
+                        LOGGER.debug("Clean completed: " + uuid);
                         break;
                     }
                     LOGGER.debug("Cleaning chunk: " + chunkName + "...");
                     try
                     {
-                        facade.delete(chunkName);
+                        facade.delete(chunkName, FSConstants.FileDataCF, FSConstants.ChunkAttr);
                         LOGGER.debug("Cleaning chunk: " + chunkName + " succeeded");
                     }
                     catch(Exception e)
@@ -170,7 +166,7 @@ public class CFileInputStream extends InputStream {
                     tmpIndex++;
                 }
             } catch (IOException ex) {
-                LOGGER.debug("Error cleaning fragmented chunks for file: " + path + "_$" + (tmpIndex-1));
+                LOGGER.debug("Error cleaning fragmented chunks for file: " + uuid + "_$" + (tmpIndex-1));
             }
         }
     }

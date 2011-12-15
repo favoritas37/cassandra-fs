@@ -15,6 +15,7 @@
 @REM  limitations under the License.
 
 @echo off
+if "%OS%" == "Windows_NT" setlocal
 
 set ARG=%1
 set INSTALL="INSTALL"
@@ -29,9 +30,9 @@ if NOT DEFINED JAVA_HOME goto err
 
 REM ***** JAVA options *****
 set JAVA_OPTS=-ea^
- -javaagent:"%CASSANDRA_HOME%\lib\cassandraLibs\jamm-0.2.5.jar"^
- -Xms1G^
- -Xmx1G^
+ -javaagent:"%CASSANDRA_HOME%\lib\jamm-0.2.5.jar"^
+ -Xms2G^
+ -Xmx3G^
  -XX:+HeapDumpOnOutOfMemoryError^
  -XX:+UseParNewGC^
  -XX:+UseConcMarkSweepGC^
@@ -52,7 +53,7 @@ REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%CASSANDRA_HOME%\conf"
 
 REM For each jar in the CASSANDRA_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%CASSANDRA_HOME%\lib\cassandraLibs\*.jar") do call :append "%%i"
+for %%i in ("%CASSANDRA_HOME%\lib\*.jar") do call :append "%%i"
 goto okClasspath
 
 :append

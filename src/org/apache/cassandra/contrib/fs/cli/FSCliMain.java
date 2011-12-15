@@ -467,7 +467,7 @@ public class FSCliMain {
     }
 
     private void processLs(String[] tokens) throws IOException {
-        List<String> lsDirs = new ArrayList<String>();
+        List<String> lsDirs = new ArrayList<>();
         if (tokens.length == 1) {
             lsDirs.add(decoratePath("."));
         } else {
@@ -523,17 +523,7 @@ public class FSCliMain {
         FSCliMain cli = new FSCliMain();
         cli.run();
         
-       //   cli.connect();
-       //   cli.processMkDir(cli.parseCommand("mkdir dummy"));
-//          cli.processRM(cli.parseCommand("rm gina"));
-//          cli.processCD(cli.parseCommand("cd /"));
-//          cli.processCD(cli.parseCommand("cd usr"));
-
-        //  cli.processCopyToLocal(cli.parseCommand("copyToLocal /usr/svn.rar D:\\cleanup2.exe"));
-
-//        cli.processRM(cli.parseCommand("rm /usr/ftylitak/rar.rar"));
-
-        //cli.processCopyFromLocal(cli.parseCommand("copyFromLocal C:\\CassandraFsClient_SVN.rar /usr/ftylitak/rar.rar"));
+//        cli.connect();
         // cli.processLs(cli.parseCommand("ls"));
 
         //System.in.read();

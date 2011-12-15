@@ -1,4 +1,4 @@
-package org.apache.cassandra.contrib.fs;
+package src.org.apache.cassandra.contrib.fs;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,12 +68,6 @@ public class FakedFileSystem implements IFileSystem {
 	public List<Path> list(String path) throws IOException {
 		List<Path> p = map.get(path);
 		return p == null ? new ArrayList<Path>() : p;
-	}
-
-	@Override
-	public List<Path> listAll(String path) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override

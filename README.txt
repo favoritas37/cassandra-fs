@@ -1,5 +1,7 @@
 Cassandra-fs: S3 like file system implemented based on Cassandra
 
+By zjffdu@gmail.com, hhhust@gmail.com, joyeer.xuqing@gmail.com
+
 Project description
 ===================
 Cassandra-fs is a S3 like distributed file system implemented based on Cassandra.
@@ -18,8 +20,7 @@ Install and Run Cassandra-fs in local mode
 *** Install it on windows
 1. open cmd, go to directory %CASSANDA_HOME%, execute command : "ant jar" to build the cassandra-fs.
 2. similar to step 1 and execute the following command to run the cassandra in local: "bin\cassandra.bat" to start cassandra on windows
-3. similar to step 1, execute the following command: bin\cassandra-cli -host localhost --file conf\cassandrafs-schema.txt, to load the database schema.
-3. similar to step 1, execute the following command: "bin\cassandra-fs-cli.bat" to start cassandra-fs-cli, then you can play with a lot of file system-based commands, such as ls,mkdir and etc.
+3. similar to step 1, execute the following command : "bin\cassandra-fs-cli.bat" to start cassandra-fs-cli, then you can play with a lot of file system-based commands, such as ls,mkdir and etc.
 
 *** Install it on linux
 1. Execute the following command:
@@ -29,8 +30,7 @@ Install and Run Cassandra-fs in local mode
 	sudo chown -R `whoami` /var/lib/cassandra
 2. open shell, go to directory $CASSANDA_HOME, execute command : "ant jar" to build the cassandra-fs.
 3. similar to step 1 and execute the following command to run cassandra in local: "bin/cassandra" to start cassandra on linux
-4. similar to step 1 and execute the following command: bin/cassandra-cli -host localhost --file conf/cassandrafs-schema.txt, to load the database schema.
-5. similar to step 1, execute the following command : "bin/cassandra-fs-cli" to start cassandra-fs-cli, then you can play with a lot of file system-based commands, such as ls,mkdir and etc. 
+4. similar to step 1, execute the following command : "bin/cassandra-fs-cli" to start cassandra-fs-cli, then you can play with a lot of file system-based commands, such as ls,mkdir and etc. 
 
 Install and Run Cassandra-fs in cluster mode (linux)
 ====================================================
@@ -38,7 +38,6 @@ Install and Run Cassandra-fs in cluster mode (linux)
 2. edit file conf/client-conf.properties, modify property cassandra.client.hosts, the default is localhost:9160, change it to your cassandra cluster, you can specify multiple machines by using comma to split the machine address, e.g. 
 cassandra.client.hosts=machine_1:9160,machine_2:9160,machine_3:9160
 3. open shell, go to directory $CASSANDA_HOME, execute command : "ant jar" to build the cassandra-fs.
-4. execute "bin/cassandra-cli -host machine_1 --file conf/cassandrafs-schema.txt" to load the schema. machine_1 is passed as an example. Any Cassandra node would do the same.
 4. execute the following command : "bin/cassandra-fs-cli" to start cassandra-fs-cli, then you can play with a lot of file system-based commands, such as ls,mkdir and etc. 
 
 Commands Cassandra-fs supports:
@@ -53,6 +52,8 @@ Commands Cassandra-fs supports:
 * rmr <file | folder>	// force remove the folder or file no matter the folder is empty or not
 * newfile <file> <content>	// make a new file on cassandra-fs with the contents of the second argument
 * cat <file>...	// print the file content in console
+* copyFromHDFS <source> <dest>	// copy file or folder from HDFS to cassandra-fs
+* copyToHDFS <source> <dest>	// copy file or folder from Cassandra-fs to HDFS
 * mkdir <folder> 	// make directory on cassandra-fs including the parent directory
 
 

@@ -105,7 +105,7 @@ seed_provider:
       parameters:
         # seeds is actually a comma-delimited list of addresses.
         # Ex: "<ip1>,<ip2>,<ip3>"
-        - seeds: "localhost"
+        - seeds: "127.0.0.1"
 
 # emergency pressure valve: each time heap usage after a full (CMS)
 # garbage collection is above this fraction of the max, Cassandra will
@@ -289,7 +289,7 @@ in_memory_compaction_limit_in_mb: 64
 # concurrent_compactors defaults to the number of cores.
 # Uncomment to make compaction mono-threaded, the pre-0.8 default.
 
-concurrent_compactors: 2
+#concurrent_compactors: 2
 
 # Multi-threaded compaction. When enabled, each compaction will use
 # up to one thread per core, plus one thread per sstable being merged.

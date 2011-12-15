@@ -187,7 +187,7 @@ public class ClientConfiguration
         }
         else 
         {
-            int value = 5242880;
+            int value = FSConstants.BlockSize;
 
             try{ value = Integer.parseInt(cons);}
             catch(NumberFormatException e){}

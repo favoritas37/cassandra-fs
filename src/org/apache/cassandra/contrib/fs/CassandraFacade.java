@@ -3,41 +3,42 @@ package org.apache.cassandra.contrib.fs;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
-import me.prettyprint.hector.api.beans.SuperRow;
 import static me.prettyprint.hector.api.factory.HFactory.createColumn;
 import static me.prettyprint.hector.api.factory.HFactory.createColumnQuery;
 import static me.prettyprint.hector.api.factory.HFactory.createKeyspace;
-import static me.prettyprint.hector.api.factory.HFactory.createMultigetSliceQuery;
 import static me.prettyprint.hector.api.factory.HFactory.createMutator;
 import static me.prettyprint.hector.api.factory.HFactory.getOrCreateCluster;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
+import me.prettyprint.cassandra.model.CqlQuery;
+import me.prettyprint.cassandra.model.CqlRows;
 import org.apache.log4j.Logger;
 
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
+
+
+import me.prettyprint.cassandra.serializers.DateSerializer;
+import me.prettyprint.cassandra.serializers.LongSerializer;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.Serializer;
 import me.prettyprint.hector.api.beans.HColumn;
-import me.prettyprint.hector.api.beans.HSuperColumn;
+import me.prettyprint.hector.api.beans.Row;
 import me.prettyprint.hector.api.beans.Rows;
-import me.prettyprint.hector.api.beans.SuperRows;
 import me.prettyprint.hector.api.mutation.Mutator;
 import me.prettyprint.hector.api.query.ColumnQuery;
 import me.prettyprint.hector.api.query.MultigetSliceQuery;
 import me.prettyprint.hector.api.query.QueryResult;
-import org.apache.cassandra.thrift.ColumnPath;
 import me.prettyprint.hector.api.exceptions.*;
 import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.query.CountQuery;
-import me.prettyprint.hector.api.query.MultigetSuperSliceQuery;
-import me.prettyprint.hector.api.query.SuperColumnQuery;
-import me.prettyprint.hector.api.query.SuperCountQuery;
+import org.apache.cassandra.contrib.fs.util.Bytes;
 
 /**
  * TODO use the hector java api in future, here use the thrift api just for
@@ -53,18 +54,20 @@ public class CassandraFacade
     private static CassandraFacade instance;
     private CassandraHostConfigurator cassandraHostConfigurator;
     private Cluster cluster;
+    private final Serializer<byte[]> hectorByteSerializer = BytesArraySerializer.get();
+    private final Serializer<String> hectorStringSerializer = StringSerializer.get();
+    private final Serializer<Long> hectorLongSerializer = LongSerializer.get();
     private final StringSerializer serializer = StringSerializer.get();
     private final BytesArraySerializer byteSerializer = BytesArraySerializer.get();
+    private final DateSerializer dateSerializer = DateSerializer.get();
+    private final LongSerializer longSerializer = LongSerializer.get();
     private Keyspace keyspace;
-    //static String strEncoding = "ASCII";
 
     public static CassandraFacade getInstance() throws IOException
     {
-        if (instance == null) {
-            synchronized (CassandraFacade.class) {
-                if (instance == null) {
-                    instance = new CassandraFacade();
-                }
+        synchronized (CassandraFacade.class) {
+            if (instance == null) {
+                instance = new CassandraFacade();
             }
         }
         return instance;
@@ -85,7 +88,6 @@ public class CassandraFacade
         cassandraHostConfigurator.setMaxIdle(conf.getMaxIdle());
         cassandraHostConfigurator.setCassandraThriftSocketTimeout(conf.getCassandraThriftSocketTimeout());
         cassandraHostConfigurator.setMaxWaitTimeWhenExhausted(conf.getMaxWaitTimeWhenExhausted());
-        FSConstants.MaxFileSize = conf.getMaxFileSize();
         FSConstants.BlockSize = conf.getBlockSize();
 
         cluster = getOrCreateCluster("CassandraFS", conf.getHosts());
@@ -97,159 +99,146 @@ public class CassandraFacade
         keyspace.setConsistencyLevelPolicy(cLevel);
     }
 
-    private ColumnPath extractColumnPath(String column) throws IOException
+    ////////////////////////////////////
+    /////////// Put Functions   ////////
+    ////////////////////////////////////
+    public void put(String key, String column, byte[] value, String columnFamily) throws IOException
     {
-        String[] subColumns = column.split(":");
-        ColumnPath columnPath = new ColumnPath();
-        columnPath.setColumn_family(subColumns[0]);
-        if (subColumns.length == 2) {
-            columnPath.setSuper_column((java.nio.ByteBuffer) null);
-            columnPath.setColumn(subColumns[1].getBytes());
-        }
-        else if (subColumns.length == 3) {
-            columnPath.setSuper_column(subColumns[1].getBytes());
-            columnPath.setColumn(subColumns[2].getBytes());
-        }
-        else {
-            throw new IOException("The column is not the right format:"
-                    + column);
-        }
-        return columnPath;
-    }
-
-    public void put(String key, String column, byte[] value) throws IOException
-    {
-        ColumnPath columnPath = extractColumnPath(column);
-
-        if(columnPath.column_family.compareTo(FSConstants.FileCF) == 0)
-            this.insert(key, value, serializer, byteSerializer, columnPath.column_family, new String(columnPath.column.array()));
-        else
-            this.insert(key, new String(value), columnPath.column_family,
-                                                new String(columnPath.super_column.array()),
-                                                new String(columnPath.column.array()));
-
+        this.insert(key, value, byteSerializer, columnFamily, column);
         LOGGER.debug("Bytes written to Cassandra: " + value.length);
     }
 
     // Support only one superColumnOnly at one time
-    public void batchPut(String key, String cfName, String colName, Map<String, byte[]> map,
-            boolean isSuperColumn) throws IOException
+    public void batchPutSingleRow(String key, String cfName, String colName, Map<String, byte[]> map) throws IOException
     {
-        if (!isSuperColumn) {
-            insertMulti(key, map, serializer, cfName);
-        }
-        else {
-            insertMultiSuper(key, colName, cfName, map, serializer);
-        }
+        insertMulti(key, map, serializer, cfName);
     }
 
-    public void batchPutMultipleSimpleKeyColumns(Map<String, Map<String, byte[]>> map, String cfName) throws IOException
+    public void batchPutMultipleRows(Map<String, Map<String, byte[]>> map, String cfName) throws IOException
     {
         insertMulti(map, cfName, serializer);
     }
 
-    public byte[] get(String key, String column) throws IOException
+    ////////////////////////////////////
+    /////////// Get Functions   ////////
+    ////////////////////////////////////
+    public byte[] get(String columnFamily, String key, String column) throws IOException
     {
-        ColumnPath columnPath = extractColumnPath(column);
-
-        byte[] result = get(key, serializer, columnPath.column_family, new String(columnPath.getColumn()));
+        byte[] result = get(key, serializer, columnFamily, column);
         if(result != null)
             LOGGER.debug("Bytes read from Cassandra: " + result.length);
 
         return result;
     }
 
-    /**
-     * Delete all columns referring to that row
-     * @param key
-     * @throws IOException
-     */
-    public void delete(String key) throws IOException
+    ////////////////////////////////////
+    /////////// Delete Functions   /////
+    ////////////////////////////////////
+    public void delete(String key, String columnFamily) throws IOException
     {
-        LOGGER.debug("Deleting key: " + key);
-        delete(FSConstants.FileCF, null, serializer, key);
-        delete(FSConstants.FolderCF, null, serializer, key);
+        LOGGER.debug("Deleting key: " + key + ", from CL: " + columnFamily);
+        delete(columnFamily, null, serializer, key);
+        LOGGER.debug("Data removed: " + key);
     }
 
-    /**
-     * Delete specific key & column
-     * @param key
-     * @param columnFamily
-     * @param superColumn
-     * @throws IOException
-     */
-    public void delete(String key, String columnFamily, String superColumn)
+    public void delete(String key, String columnFamily, String column)
             throws IOException
     {
-        delete(columnFamily, superColumn, serializer, key);
+        delete(columnFamily, column, serializer, key);
     }
 
-    public boolean exist(String key) throws IOException
+    ////////////////////////////////////
+    /////////// Lookup Functions   /////
+    ////////////////////////////////////
+    public boolean exist(String key, String ColumnFamily) throws IOException
     {
-        int rowCount = countRow(key, FSConstants.FileCF, serializer);
+        int rowCount = countRow(key, ColumnFamily, serializer);
 
         LOGGER.debug(key + ": exists = " + rowCount);
         return (rowCount > 0) ? true : false;
     }
-
-    public boolean existDir(String key) throws IOException
+    
+    public boolean existsFile(String path) throws IOException
     {
-        int rowCount = countRowSuper(key, FSConstants.FolderCF, serializer);
-
-        LOGGER.debug(key + ": dir exists = " + rowCount);
-        return (rowCount > 0) ? true : false;
+        Path element = new Path(path);
+        String query = "SELECT COUNT(*) FROM FileMeta WHERE Name = '"+element.getName()+"' AND Path = '"+element.getParentPath()+"' AND 'Type' = 'File'";
+        CqlQuery<String,String,Long> cqlQuery = new CqlQuery<>(keyspace, hectorStringSerializer, hectorStringSerializer, hectorLongSerializer);
+        cqlQuery.setQuery(query);
+        QueryResult<CqlRows<String,String,Long>> result = cqlQuery.execute();
+        if(result == null) return false;
+        return result.get().getAsCount() > 0;
     }
 
-
-    public List<Path> list(String key, String columnFamily,
-            boolean includeFolderFlag) throws IOException
+    public boolean existDir(String path) throws IOException
     {
-        List<Path> children = new ArrayList<Path>();
+        Path element = new Path(path);
+        String query = "SELECT COUNT(*) FROM FileMeta WHERE Name = '"+ element.getName() +"' AND Path = '"+element.getParentPath()+"' AND 'Type' = 'Folder'";
+        CqlQuery<String,String,Long> cqlQuery = new CqlQuery<>(keyspace, hectorStringSerializer, hectorStringSerializer, hectorLongSerializer);
+        cqlQuery.setQuery(query);
+        QueryResult<CqlRows<String,String,Long>> result = cqlQuery.execute();
+        if(result == null) return false;
+        return result.get().getAsCount() > 0;
+    }
 
-        if (columnFamily.equals(FSConstants.FolderCF))
+    public List<Path> list(String path, boolean listFolder) throws IOException
+    {
+        List<Path> children = new ArrayList<>();
+
+        String query = "";
+        if (listFolder)
+            query = "SELECT * FROM FileMeta WHERE Path = '"+path+"'";
+        else //search for a specific file
         {
-            List<HSuperColumn<String, String, String>> attrColumn = getMultiSuper(key, columnFamily, serializer,
-                    FSConstants.TypeAttr,
-                    FSConstants.LengthAttr,
-                    FSConstants.LastModifyTime,
-                    FSConstants.OwnerAttr,
-                    FSConstants.GroupAttr);
-
-            for (HSuperColumn sc : attrColumn)
-            {
-                    String name = new String(sc.getNameBytes());
-                    List<HColumn<String, String>> attributes = sc.getColumns();
-                    Path path = new Path(attributes, name);
-//                    children.add(path);
-                    if (includeFolderFlag) {
-                        children.add(path);
-                    } else if (!name.equals(FSConstants.FolderFlag)) {
-                        children.add(path);
-                    }
-            }
+            Path element = new Path(path);
+            query = "SELECT * FROM FileMeta WHERE Name = '"+element.getName()+"' AND Path = '"+element.getParentPath()+"'";
         }
-        else if (columnFamily.equals(FSConstants.FileCF))
-        {
-            List<HColumn<String, String>> attrColumn = getMultiColumn(key, columnFamily, serializer,
-                    FSConstants.TypeAttr,
-                    FSConstants.LengthAttr,
-                    FSConstants.LastModifyTime,
-                    FSConstants.OwnerAttr,
-                    FSConstants.GroupAttr);
             
-            if (attrColumn.size() != 0)
-            {
-                Path path = new Path(attrColumn, key);
-                children.add(path);
-            }
-
+        CqlQuery<String,String,byte[]> cqlQuery = new CqlQuery<>(keyspace, hectorStringSerializer, hectorStringSerializer, hectorByteSerializer);
+        cqlQuery.setQuery(query);
+        QueryResult<CqlRows<String,String,byte[]>> result = cqlQuery.execute();
+        if(result == null)
+            return children;
+        try{
+        List<Row<String, String, byte[]>> rows = result.get().getList();
+        for (Row<String, String, byte[]> row : rows)
+        {
+            String uuid = row.getKey();
+            List<HColumn<String, byte[]>> attributes = extractInfoFromRow(row);
+            Path fileInfo = new Path(attributes, uuid);
+            children.add(fileInfo);
         }
-        else {
-            throw new RuntimeException("Do not support CF:'" + columnFamily
-                    + "' now");
         }
-
+        catch(java.lang.NullPointerException e){}
+        
         return children;
+    }
+    
+    public int countDirChildren(String path)
+    {
+        //check here the shlash at the end!!!!!!!!
+        String query = "SELECT COUNT(*) FROM FileMeta WHERE Path = '"+path+"'";
+        CqlQuery<String,String,Long> cqlQuery = new CqlQuery<>(keyspace, hectorStringSerializer, hectorStringSerializer, hectorLongSerializer);
+        cqlQuery.setQuery(query);
+        QueryResult<CqlRows<String,String,Long>> result = cqlQuery.execute();
+        if(result == null)
+            return 0;
+        else
+            return result.get().getAsCount();
+    }
+    
+    private List<HColumn<String, byte[]>> extractInfoFromRow(Row<String, String, byte[]> row)
+    {
+        List<HColumn<String, byte[]>> columns = new ArrayList<>();
+        columns.add(row.getColumnSlice().getColumnByName("Name"));
+        columns.add(row.getColumnSlice().getColumnByName("Path"));
+        columns.add(row.getColumnSlice().getColumnByName("Type"));
+        columns.add(row.getColumnSlice().getColumnByName("Length"));
+        columns.add(row.getColumnSlice().getColumnByName("CreationTime"));
+        columns.add(row.getColumnSlice().getColumnByName("LastModifiedTime"));
+        columns.add(row.getColumnSlice().getColumnByName("Owner"));
+        columns.add(row.getColumnSlice().getColumnByName("Group"));
+        columns.add(row.getColumnSlice().getColumnByName("Permissions"));
+        return columns;
     }
 
     ///////////////////////////
@@ -261,23 +250,11 @@ public class CassandraFacade
      * @param key   Key for the value
      * @param value the String value to insert
      */
-    public <K,V> void insert(final K key, final V value, Serializer<K> keySerializer, Serializer<V> valueSerializer,
+    public <V> void insert(final String key, final V value, Serializer<V> valueSerializer,
             String cfName, String clName)
     {
-        createMutator(keyspace, keySerializer).insert(
+        createMutator(keyspace, serializer).insert(
                 key, cfName, createColumn(clName, value, serializer, valueSerializer));
-    }
-
-    private void insert(String key, String value, String cfName, String scName,
-                            String cName)
-    {
-        Mutator<String> mutator =
-                HFactory.createMutator(keyspace, serializer);
-
-        mutator.insert(key, cfName,
-                HFactory.createSuperColumn(scName,
-                    Arrays.asList(HFactory.createStringColumn(cName, value)),
-                    serializer, serializer, serializer));
     }
 
     /**
@@ -307,32 +284,22 @@ public class CassandraFacade
         while(it.hasNext())
         {
             K key = it.next();
-            for (Map.Entry<String, byte[]> columnValue : columnValues.get(key).entrySet()) {
-                m.addInsertion(key, cfName,
-                        createColumn(columnValue.getKey(), columnValue.getValue(),
-                        keyspace.createClock(), serializer, byteSerializer));
+            for (Map.Entry<String, byte[]> columnValue : columnValues.get(key).entrySet()) 
+            {
+                if(columnValue.getKey().equals("Length") || 
+                        columnValue.getKey().equals("CreationTime") || 
+                        columnValue.getKey().equals("LastModifyTime"))
+                {
+                    m.addInsertion(key, cfName,
+                        createColumn(columnValue.getKey(), (long)Bytes.toLong(columnValue.getValue()),
+                        keyspace.createClock(), serializer, longSerializer));
+                }
+                else
+                    m.addInsertion(key, cfName,
+                            createColumn(columnValue.getKey(), columnValue.getValue(),
+                            keyspace.createClock(), serializer, byteSerializer));
             }
         }
-        m.execute();
-    }
-
-    /**
-     * Insert multiple columns to one key at a supercolumn
-     */
-    public <SN, K> void insertMultiSuper(K key, String superColumnName, String cfName,
-            Map<String, byte[]> columnValues, Serializer<K> keySerializer)
-    {
-        Mutator<K> m = createMutator(keyspace, keySerializer);
-        List<HColumn<String, String>> columns = new ArrayList<HColumn<String, String>>();
-
-        for (Map.Entry<String, byte[]> columnValue : columnValues.entrySet()) {
-            columns.add(HFactory.createStringColumn(columnValue.getKey(), new String(columnValue.getValue())));
-        }
-
-        m.addInsertion(key, cfName,
-                HFactory.createSuperColumn(superColumnName, columns,
-                serializer, serializer, serializer));
-
         m.execute();
     }
 
@@ -354,28 +321,11 @@ public class CassandraFacade
     }
 
     /**
-     * Get Super Column data.
-     *
-     * @return The string value; null if no value exists for the given key.
-     */
-    public <K> HSuperColumn<String, String, String> getSuper(final String key, Serializer<K> keySerializer,
-            String cfName, String clName) throws HectorException
-    {
-        SuperColumnQuery<String, String, String, String> superColumnQuery =
-                HFactory.createSuperColumnQuery(keyspace, serializer, serializer,
-                serializer, serializer);
-        superColumnQuery.setColumnFamily(cfName).setKey(key).setSuperName(clName);
-
-        QueryResult<HSuperColumn<String, String, String>> result = superColumnQuery.execute();
-        return result.get();
-    }
-
-    /**
      * Get multiple values from one specific column
      * @param keys
      * @return
      */
-    public <K> List<HColumn<String, String>> getMultiKeys(String cfName, String clName, Serializer<K> keySerializer, K... keys)
+    /*public <K> List<HColumn<String, String>> getMultiKeys(String cfName, String clName, Serializer<K> keySerializer, K... keys)
     {
         MultigetSliceQuery<K, String, String> q = createMultigetSliceQuery(keyspace, keySerializer, serializer, serializer);
         q.setColumnFamily(cfName);
@@ -394,7 +344,7 @@ public class CassandraFacade
                 ret.add(c);
         }
         return ret;
-    }
+    }*/
 
     /**
      * Get multiple values from one specific column
@@ -411,42 +361,13 @@ public class CassandraFacade
         QueryResult<Rows<K, String, String>> r = q.execute();
         Rows<K, String, String> rows = r.get();
         //Map<String, String> ret = new HashMap<String, String>(clNames.length);
-        List<HColumn<String, String>> ret = new ArrayList<HColumn<String, String>>();
+        List<HColumn<String, String>> ret = new ArrayList<>();
         
         for (String k : clNames) {
             HColumn<String, String> c = rows.getByKey(key).getColumnSlice().getColumnByName(k);
             if (c != null)
                 ret.add(c);
         }
-        return ret;
-    }
-
-    public <K> List<HSuperColumn<String, String, String>> getMultiSuper(K key, String cfName, Serializer<K> keySerializer, String... clNames)
-    {
-        MultigetSuperSliceQuery<K, String, String, String> q =
-                HFactory.createMultigetSuperSliceQuery(keyspace, keySerializer, serializer, serializer, serializer);
-        q.setColumnFamily(cfName);
-        q.setKeys(key);
-        q.setColumnNames(clNames);
-        q.setRange("", "", false, Integer.MAX_VALUE);
-
-        QueryResult<SuperRows<K, String, String, String>> r = q.execute();
-
-        SuperRows<K, String, String, String> rows = r.get();
-        //Map<String, String> ret = new HashMap<String, String>(clNames.length);
-        List<HSuperColumn<String, String, String>> ret = new ArrayList<HSuperColumn<String, String, String>>();
-
-        Iterator<SuperRow<K, String, String, String>> it = rows.iterator();
-
-        //the iterator is always size 1 ....it has to be.....i suppose...maybe...heaaaa
-        while(it.hasNext())
-        {
-            SuperRow<K, String, String, String> sRow = it.next();
-            List<HSuperColumn<String, String, String>> sColumns = sRow.getSuperSlice().getSuperColumns();
-
-            ret.addAll(sColumns);
-        }
-
         return ret;
     }
 
@@ -473,14 +394,51 @@ public class CassandraFacade
                 execute();
         return r.get().intValue();
     }
-
-    public <K> int countRowSuper(K key, String cfName, Serializer<K> keySerializer)
+    
+///////////////////////////////////////////////////////////////
+//////  CQL functions
+    
+    /**
+     * There might be problem here because the function will be called at every lookup to 
+     * get the UUID of the file. Could be extended to have a cashe but that will be investigated
+     * later on.
+     * @param path
+     * @return 
+     */
+   
+    public String getRowUUID(String path)
     {
-        SuperCountQuery<K, String> q = HFactory.createSuperCountQuery(keyspace, keySerializer, serializer);
-        QueryResult<Integer> r = q.setKey(key).
-                setColumnFamily(cfName).
-                setRange("", "", Integer.MAX_VALUE).
-                execute();
-        return r.get().intValue();
+        Path element = new Path(path);
+        String query = "SELECT Name FROM FileMeta WHERE Name = '"+element.getName()+"' AND Path = '"+element.getParentPath()+"'";
+        
+        CqlQuery<String,String,String> cqlQuery = 
+                new CqlQuery<>(keyspace, hectorStringSerializer, hectorStringSerializer, hectorStringSerializer);
+        cqlQuery.setQuery(query);
+        QueryResult<CqlRows<String,String,String>> result = cqlQuery.execute();
+        if(result == null)
+            return "";
+        
+        try{
+            List<Row<String, String, String>> rows = result.get().getList();
+
+            if(rows.size() > 0)
+                return rows.get(0).getKey();
+        }
+        catch(NullPointerException e){LOGGER.debug("No UUID found for path: " +path );}
+            
+        return "";
+    }
+    
+    public static void main(String[] args) throws IOException
+    {
+        CassandraFacade fs = CassandraFacade.getInstance();
+        String uuid = UUID.randomUUID().toString();
+        System.out.println("UUID: " + uuid);
+        fs.put(uuid, "Name", Bytes.toBytes(new String("testFile")), FSConstants.FileMetaCF);
+        fs.put(uuid, "Path", Bytes.toBytes(new String("/usr/ftylitak")), FSConstants.FileMetaCF);
+        String uuidNew = fs.getRowUUID("/usr/ftylitak/testFile");
+        System.out.println("UUID new: " + uuidNew);
+        
+        return;
     }
 }
